@@ -298,8 +298,120 @@ server {
 ```
 После этого проверьте конфигурацию sudo nginx -t и перезагрузите её командой sudo systemctl reload nginx, чтобы изменения вступили в силу.
 ## Шифрование. HTTPS
+SSL-сертификат от Let’s Encrypt можно установить на веб-сервер вручную, но можно и автоматизировать этот процесс. Для этого вам понадобится специальное ПО, например пакет certbot — его предоставляет центр сертификации Let’s Encrypt специально для Linux-систем.
+Чтобы установить certbot, вам понадобится пакетный менеджер snap. Установите его командой:
+```
+sudo apt install snapd
+```
+Далее сервер, скорее всего, попросит вам перезагрузить операционную систему. Сделайте это, а потом последовательно выполните команды:
+```
+# Установка и обновление зависимостей для пакетного менеджера snap.
+sudo snap install core; sudo snap refresh core
+# При успешной установке зависимостей в терминале выведется:
+# core 16-2.58.2 from Canonical✓ installed 
+
+# Установка пакета certbot.
+sudo snap install --classic certbot
+# При успешной установке пакета в терминале выведется:
+# certbot 2.3.0 from Certbot Project (certbot-eff✓) installed
+
+# Создание ссылки на certbot в системной директории,
+# чтобы у пользователя с правами администратора был доступ к этому пакету.
+sudo ln -s /snap/bin/certbot /usr/bin/certbot
+```
+Чтобы начать процесс получения сертификата, введите команду:
+```
+sudo certbot --nginx
+```
+Далее система оповестит вас о том, что учётная запись зарегистрирована и попросит указать имена, для которых вы хотели бы активировать HTTPS:
+```
+Account registered.
+
+Which names would you like to activate HTTPS for?
+We recommend selecting either all domains, or all domains in a VirtualHost/server block.
+
+1: <доменное_имя_вашего_проекта>
+
+Select the appropriate numbers separated by commas and/or spaces, or leave input
+blank to select all options shown (Enter 'c' to cancel):
+```
+Введите 1 или не вводите ничего и нажмите Enter.
+После этого certbot отправит ваши данные на сервер Let's Encrypt, и там будет выпущен сертификат, который автоматически сохранится на вашем сервере в системной директории /etc/ssl/. Также будет автоматически изменена конфигурация Nginx: в файл /etc/nginx/sites-enabled/default добавятся новые настройки и будут прописаны пути к сертификату.
+Откройте файл /etc/nginx/sites-enabled/default и убедитесь в этом:
+```
+server {
+
+        server_name ваш_ip ваше_доменное_имя;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+    }
+
+    location /admin/ {
+        proxy_pass http://127.0.0.1:8000;
+    }
+
+    location / {
+
+        root   /var/www/Taski;
+        index  index.html index.htm;
+        try_files $uri /index.html =404;
+        }
+
+# Далее идут новые настройки и описание путей к сертификату.
+
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/testtaski.hopto.org/fullchain.pem; 
+    ssl_certificate_key /etc/letsencrypt/live/testtaski.hopto.org/privkey.pem; 
+    include /etc/letsencrypt/options-ssl-nginx.conf; 
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+}
+
+server {
+    if ($host = ваше_доменное_имя) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
 
 
 
+    listen       80;
+
+    server_name server_name ваш_ip ваше_доменное_имя;
+    return 404; # managed by Certbot
+
+
+} 
+```
+Перезагрузите конфигурацию Nginx:
+```
+sudo systemctl reload nginx
+```
+Настройка автоматического обновления SSL-сертификата. Срок действия SSL-сертификатов ограничен: например, сертификат от Let’s Encrypt действует 90 дней. Но обновлять его вручную вам не придётся, это будет делать за вас пакет certbot, если в его конфигурации ничего не менялось. 
+Чтобы узнать актуальный статус сертификата и сколько дней осталось до его перевыпуска, используйте команду:
+```
+sudo certbot certificates
+```
+Вывод в терминал будет примерно таким:
+```
+Found the following certs:
+  Certificate Name: ваше_доменное_имя
+    Serial Number: 4f8d9d12b7f7e41124321322233db9024446372120
+    Key Type: ECDSA
+    Domains: ваше_доменное_имя
+    Expiry Date: <дата> <время> (VALID: 89 days)
+    Certificate Path: /etc/letsencrypt/live/ваше_доменное_имя/fullchain.pem
+    Private Key Path: /etc/letsencrypt/live/ваше_доменное_имя/privkey.pem
+```
+Теперь убедитесь, что сертификат будет обновляться автоматически:
+```
+sudo certbot renew --dry-run
+```
+Если не выведется ошибка, значит, всё в порядке.
+Вручную сертификат можно обновить командой:
+```
+sudo certbot renew --pre-hook "service nginx stop" --post-hook "service nginx start"
+```
+Эта команда обновит сертификат и перезапустит nginx.
 
 Автор проекта: [khadakhan](https://github.com/khadakhan/)
