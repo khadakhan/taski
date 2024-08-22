@@ -451,4 +451,5 @@ yc-user@158.160.91.227:/home/yc-user/foodgram/docs
 # Author
 As an example, you can see the application at work at:
 https://taskido.zapto.org/
+
 Project author: [khadakhan](https://github.com/khadakhan/)
