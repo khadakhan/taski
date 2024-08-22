@@ -1,5 +1,7 @@
 # Taski
-The simplest application for planning your tasks. The application has two lists depending on the task status:
+The simplest application for planning your tasks.  This project consists of a backend application on Django and a frontend application on React.
+
+The application has two lists depending on the task status:
 * completed
 * not completed
 
