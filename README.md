@@ -5,7 +5,8 @@ The application has two lists depending on the task status:
 * completed
 * not completed
 
-You can create, edit, delete, transfer a task from one status to another
+You can create, edit, delete, transfer a task from one status to another.
+This project we deploy manualy on server.
 
 # How to deploy a project on the server:
 To connect to your server via SSH, you will need the following data:
